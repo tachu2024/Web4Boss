@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/api';
+import AuthLayout from '../components/AuthLayout';
 
 export default function Register() {
     const navigate = useNavigate();
@@ -39,54 +40,57 @@ export default function Register() {
     };
 
     return (
-        <div className="p-4">
-            <h2 className="text-xl mb-4">Đăng ký</h2>
-            <form onSubmit={handleRegister} className="max-w-md">
-                <div className="mb-4">
+        <AuthLayout>
+            <h2 className="text-2xl font-bold mb-6 text-white">Đăng ký</h2>
+            <form onSubmit={handleRegister} className="space-y-4">
+                <div>
                     <input
                         type="text"
-                        className="border px-2 py-1 w-full"
+                        className="w-full px-4 py-2 rounded bg-white bg-opacity-20 text-white placeholder-gray-300 border border-gray-300 focus:outline-none focus:border-blue-500"
                         placeholder="Username"
                         value={registerForm.username}
                         onChange={(e) => setRegisterForm({...registerForm, username: e.target.value})}
                     />
                 </div>
-                <div className="mb-4">
+                <div>
                     <input
                         type="password"
-                        className="border px-2 py-1 w-full"
+                        className="w-full px-4 py-2 rounded bg-white bg-opacity-20 text-white placeholder-gray-300 border border-gray-300 focus:outline-none focus:border-blue-500"
                         placeholder="Password"
                         value={registerForm.password}
                         onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
                     />
                 </div>
-                <div className="mb-4">
+                <div>
                     <input
                         type="password"
-                        className="border px-2 py-1 w-full"
+                        className="w-full px-4 py-2 rounded bg-white bg-opacity-20 text-white placeholder-gray-300 border border-gray-300 focus:outline-none focus:border-blue-500"
                         placeholder="Confirm Password"
                         value={registerForm.confirmPassword}
                         onChange={(e) => setRegisterForm({...registerForm, confirmPassword: e.target.value})}
                     />
                 </div>
                 {error && (
-                    <div className="text-red-500 mb-4">
+                    <div className="text-red-400 text-sm">
                         {error}
                     </div>
                 )}
-                <div className="flex gap-2">
-                    <button type="submit" className="bg-blue-500 text-white px-4 py-1">
+                <div className="flex flex-col gap-4">
+                    <button 
+                        type="submit" 
+                        className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                    >
                         Đăng ký
                     </button>
                     <button 
                         type="button" 
-                        className="text-blue-500"
+                        className="text-white hover:text-blue-300 transition-colors"
                         onClick={() => navigate('/login')}
                     >
                         Đã có tài khoản? Đăng nhập
                     </button>
                 </div>
             </form>
-        </div>
+        </AuthLayout>
     );
 }

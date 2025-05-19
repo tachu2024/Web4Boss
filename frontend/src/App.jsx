@@ -5,6 +5,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Navbar from './components/Navbar';
 import Posts from './pages/Posts';
+import ContentPage from './components/ContentPage';
+import MainLayout from './components/MainLayout';
 
 export default function App() {
     return (
@@ -16,6 +18,65 @@ export default function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/posts" element={<Posts />} />
+                
+                {/* Main menu routes */}
+                <Route path="/technical" element={
+                    <MainLayout>
+                        <ContentPage title="Technical" />
+                    </MainLayout>
+                } />
+                <Route path="/car" element={
+                    <MainLayout>
+                        <ContentPage title="Car" />
+                    </MainLayout>
+                } />
+                <Route path="/english" element={
+                    <MainLayout>
+                        <ContentPage title="English" />
+                    </MainLayout>
+                } />
+                <Route path="/family" element={
+                    <MainLayout>
+                        <ContentPage title="Family" />
+                    </MainLayout>
+                } />
+                <Route path="/friend" element={
+                    <MainLayout>
+                        <ContentPage title="Friend" />
+                    </MainLayout>
+                } />
+                
+                {/* Sport submenu routes */}
+                <Route path="/sport/gym" element={
+                    <MainLayout>
+                        <ContentPage title="Gym" />
+                    </MainLayout>
+                } />
+                <Route path="/sport/yoga" element={
+                    <MainLayout>
+                        <ContentPage title="Yoga" />
+                    </MainLayout>
+                } />
+                <Route path="/sport/burn" element={
+                    <MainLayout>
+                        <ContentPage title="Burn" />
+                    </MainLayout>
+                } />
+                <Route path="/sport/swim" element={
+                    <MainLayout>
+                        <ContentPage title="Swim" />
+                    </MainLayout>
+                } />
+                <Route path="/sport/run" element={
+                    <MainLayout>
+                        <ContentPage title="Run" />
+                    </MainLayout>
+                } />
+                <Route path="/sport/cycle" element={
+                    <MainLayout>
+                        <ContentPage title="Cycle" />
+                    </MainLayout>
+                } />
             </Routes>
         </Router>
     );

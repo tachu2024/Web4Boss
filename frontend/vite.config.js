@@ -4,6 +4,6 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
     plugins: [react()],
     server: {
-        port: 3003  // hoặc bỏ dòng này để dùng mặc định 5173
+        // port: 3003
     }
 });
