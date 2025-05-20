@@ -2,23 +2,29 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import AuthLayout from '../components/AuthLayout';
-import backgroundImage from '../img/background.jpg';
+import loveImage from '../img/love.jpg';
+import for4Image from '../img/for4.jpg';
 
 export default function Home() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [userInfo, setUserInfo] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Kiểm tra token khi component mount
+        // Kiểm tra token và thông tin người dùng khi component mount
         const token = localStorage.getItem('token');
-        if (token) {
+        const user = localStorage.getItem('user');
+        if (token && user) {
             setIsLoggedIn(true);
+            setUserInfo(JSON.parse(user));
         }
     }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setIsLoggedIn(false);
+        setUserInfo(null);
     };
 
     if (!isLoggedIn) {
@@ -43,6 +49,9 @@ export default function Home() {
         );
     }
 
+    // Chọn background image dựa vào username
+    const backgroundImage = userInfo?.username === 'tachu2024' ? loveImage : for4Image;
+
     return (
         <MainLayout>
             <div 
@@ -50,8 +59,12 @@ export default function Home() {
                 style={{ backgroundImage: `url(${backgroundImage})` }}
             >
                 <div className="p-8 min-h-screen bg-black bg-opacity-50">
-                    <h1 className="text-3xl font-bold mb-4 text-white">Xin chào, tôi là một kỹ sư phần mềm yêu thích fullstack!</h1>
-                    <p className="text-white text-lg">Bạn đã đăng nhập thành công. Hãy khám phá các tính năng của ứng dụng!</p>
+                    <h1 className="text-3xl font-bold mb-4 text-white">
+                        Xin chào {userInfo?.fullname}, tôi là một {userInfo?.occupation} yêu thích {userInfo?.hobby}!
+                    </h1>
+                    <p className="text-white text-lg">
+                        Bạn đã đăng nhập thành công, hãy trải nghiệm tính năng lưu trữ và ghi nhớ Profile của trang web nhé
+                    </p>
                 </div>
             </div>
         </MainLayout>

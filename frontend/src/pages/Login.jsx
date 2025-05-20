@@ -23,6 +23,9 @@ export default function Login() {
             // Lưu token vào localStorage
             localStorage.setItem('token', response.data.token);
             
+            // Lưu thông tin người dùng vào localStorage
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+            
             // Chuyển hướng đến trang posts sau khi đăng nhập thành công
             navigate('/posts');
         } catch (error) {

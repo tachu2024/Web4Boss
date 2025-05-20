@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -38,7 +39,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public Map<String, String> login(@RequestBody User user) {
+    public Map<String, Object> login(@RequestBody User user) {
         log.info("Logining user: " + user.getUsername() + " " + user.getPassword());
         User dbUser = userRepository.findByUsername(user.getUsername())
                 .orElseThrow(() -> new RuntimeException("Invalid username or password"));
@@ -48,6 +49,20 @@ public class AuthController {
         }
 
         String token = jwtUtils.generateJwtToken(dbUser.getUsername());
-        return Map.of("token", token);
+        
+        // Tạo response chứa cả token và thông tin người dùng
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        
+        // Tạo map chứa thông tin người dùng
+        Map<String, String> userInfo = new HashMap<>();
+        userInfo.put("fullname", dbUser.getFullname());
+        userInfo.put("occupation", dbUser.getOccupation());
+        userInfo.put("username", dbUser.getUsername());
+        userInfo.put("hobby", dbUser.getHobby());
+        
+        response.put("user", userInfo);
+        
+        return response;
     }
 }
