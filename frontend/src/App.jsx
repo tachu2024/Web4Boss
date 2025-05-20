@@ -20,6 +20,11 @@ export default function App() {
                 <Route path="/posts" element={<Posts />} />
                 
                 {/* Main menu routes */}
+                <Route path="/family" element={
+                    <MainLayout>
+                        <ContentPage title="Family" />
+                    </MainLayout>
+                } />
                 <Route path="/technical" element={
                     <MainLayout>
                         <ContentPage title="Technical" />
@@ -33,11 +38,6 @@ export default function App() {
                 <Route path="/english" element={
                     <MainLayout>
                         <ContentPage title="English" />
-                    </MainLayout>
-                } />
-                <Route path="/family" element={
-                    <MainLayout>
-                        <ContentPage title="Family" />
                     </MainLayout>
                 } />
                 <Route path="/friend" element={
@@ -75,6 +75,21 @@ export default function App() {
                 <Route path="/sport/cycle" element={
                     <MainLayout>
                         <ContentPage title="Cycle" />
+                    </MainLayout>
+                } />
+                <Route path="/sport/guitar" element={
+                    <MainLayout>
+                        <ContentPage title="Đàn" />
+                    </MainLayout>
+                } />
+                <Route path="/commic" element={
+                    <MainLayout>
+                        <ContentPage title="Truyện Tranh" />
+                    </MainLayout>
+                } />
+                <Route path="/camera" element={
+                    <MainLayout>
+                        <ContentPage title="Camera Thông minh" />
                     </MainLayout>
                 } />
             </Routes>
