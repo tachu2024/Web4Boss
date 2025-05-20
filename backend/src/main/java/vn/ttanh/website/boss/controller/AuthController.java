@@ -60,6 +60,11 @@ public class AuthController {
         userInfo.put("occupation", dbUser.getOccupation());
         userInfo.put("username", dbUser.getUsername());
         userInfo.put("hobby", dbUser.getHobby());
+        userInfo.put("email", dbUser.getEmail());
+        userInfo.put("phone", dbUser.getPhone());
+        userInfo.put("sex", dbUser.getSex());
+        userInfo.put("birthday", dbUser.getBirthday());
+        userInfo.put("address", dbUser.getAddress());
         
         response.put("user", userInfo);
         
