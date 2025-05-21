@@ -15,4 +15,5 @@ public class Post {
     private String id;
     private String content;
     private String userId;
+    private String topicId;
 }

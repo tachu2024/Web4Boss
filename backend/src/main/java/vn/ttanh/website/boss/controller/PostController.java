@@ -20,12 +20,17 @@ public class PostController {
         this.postRepository = postRepository;
     }
 
-    // Lấy bài viết của user đang đăng nhập
+    // Lấy bài viết của user đang đăng nhập theo chủ đề
     @GetMapping
-    public List<Post> getPosts(Authentication authentication) {
+    public List<Post> getPosts(
+            @RequestParam(required = false) String topicId,
+            Authentication authentication) {
         String username = authentication.getName();
-        log.info("Retrieving posts" + username);
-        // Nếu bạn muốn lấy tất cả post, có thể bỏ lọc userId
+        log.info("Retrieving posts for user {} and topic {}", username, topicId);
+        
+        if (topicId != null && !topicId.isEmpty()) {
+            return postRepository.findByUserIdAndTopicId(username, topicId);
+        }
         return postRepository.findByUserId(username);
     }
 
@@ -33,7 +38,7 @@ public class PostController {
     @PostMapping
     public Post createPost(@RequestBody Post post, Authentication authentication) {
         String username = authentication.getName();
-        log.info(username + "Tạo bài viết");
+        log.info("Creating post for user {} in topic {}", username, post.getTopicId());
         post.setUserId(username);
         return postRepository.save(post);
     }
@@ -41,7 +46,7 @@ public class PostController {
     // Cập nhật bài viết
     @PutMapping("/{id}")
     public Post updatePost(@PathVariable String id, @RequestBody Post updatedPost, Authentication authentication) {
-        log.info("Cập nhật bài viết");
+        log.info("Updating post {}", id);
         Optional<Post> optPost = postRepository.findById(id);
         if (optPost.isEmpty()) {
             throw new RuntimeException("Post not found");

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../config/api';
+import { useTopics } from '../context/TopicContext';
 
 // Thêm interceptor để tự động thêm token vào header
 api.interceptors.request.use((config) => {
@@ -26,6 +27,9 @@ api.interceptors.response.use(
 export default function Posts() {
     const [posts, setPosts] = useState([]);
     const [newPost, setNewPost] = useState('');
+    const [selectedTopic, setSelectedTopic] = useState(null);
+    const [showAddPost, setShowAddPost] = useState(false);
+    const [showAddField, setShowAddField] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isRegistering, setIsRegistering] = useState(false);
     const [authForm, setAuthForm] = useState({
@@ -34,21 +38,22 @@ export default function Posts() {
         confirmPassword: ''
     });
     const [error, setError] = useState('');
+    const { topics, loading } = useTopics();
 
     useEffect(() => {
-        // Kiểm tra token khi component mount
         const token = localStorage.getItem('token');
         if (token) {
             setIsLoggedIn(true);
-            fetchPosts();
+            if (selectedTopic) {
+                fetchPosts();
+            }
         }
-    }, []);
+    }, [selectedTopic]);
 
     const handleAuth = async (e) => {
         e.preventDefault();
         setError('');
 
-        // Validate form
         if (isRegistering && authForm.password !== authForm.confirmPassword) {
             setError('Mật khẩu xác nhận không khớp');
             return;
@@ -56,33 +61,22 @@ export default function Posts() {
 
         try {
             if (isRegistering) {
-                console.log('Registering...');
                 const response = await api.post('/api/auth/register', {
                     username: authForm.username,
                     password: authForm.password
                 });
-                console.log('Register response:', response.data);
-                // Sau khi đăng ký thành công, chuyển sang form đăng nhập
                 setIsRegistering(false);
                 setAuthForm({ ...authForm, password: '', confirmPassword: '' });
                 alert('Đăng ký thành công! Vui lòng đăng nhập.');
             } else {
-                console.log('Logging in...');
                 const response = await api.post('/api/auth/login', {
                     username: authForm.username,
                     password: authForm.password
                 });
-                console.log('Login response:', response.data);
-                
-                // Lưu token vào localStorage
                 localStorage.setItem('token', response.data.token);
                 setIsLoggedIn(true);
-                
-                // Fetch posts sau khi login thành công
-                fetchPosts();
             }
         } catch (error) {
-            console.error('Auth error:', error);
             setError(error.response?.data?.message || error.message);
         }
     };
@@ -91,18 +85,16 @@ export default function Posts() {
         localStorage.removeItem('token');
         setIsLoggedIn(false);
         setPosts([]);
+        setSelectedTopic(null);
     };
 
     const fetchPosts = async () => {
         try {
-            console.log('Fetching posts...');
-            const res = await api.get('/api/posts');
-            console.log('Response:', res.data);
+            const res = await api.get(`/api/posts?topicId=${selectedTopic.id}`);
             setPosts(res.data);
         } catch (error) {
             console.error('Error fetching posts:', error);
             if (error.response?.status === 401) {
-                // Token hết hạn hoặc không hợp lệ
                 handleLogout();
             }
         }
@@ -110,10 +102,13 @@ export default function Posts() {
 
     const handleCreate = async () => {
         try {
-            console.log('Creating post...');
-            await api.post('/api/posts', { content: newPost });
+            await api.post('/api/posts', { 
+                content: newPost,
+                topicId: selectedTopic.id 
+            });
             setNewPost('');
             fetchPosts();
+            setShowAddPost(false);
         } catch (error) {
             console.error('Error creating post:', error);
             if (error.response?.status === 401) {
@@ -124,7 +119,6 @@ export default function Posts() {
 
     const handleDelete = async (id) => {
         try {
-            console.log('Deleting post...');
             await api.delete(`/api/posts/${id}`);
             fetchPosts();
         } catch (error) {
@@ -137,7 +131,6 @@ export default function Posts() {
 
     const handleUpdate = async (id, updatedContent) => {
         try {
-            console.log('Updating post...');
             await api.put(`/api/posts/${id}`, { content: updatedContent });
             fetchPosts();
         } catch (error) {
@@ -217,43 +210,139 @@ export default function Posts() {
                 </button>
             </div>
 
-            <div className="flex gap-2 mb-4">
-                <input
-                    className="border px-2"
-                    value={newPost}
-                    onChange={(e) => setNewPost(e.target.value)}
-                    placeholder="Nội dung bài viết mới"
-                />
-                <button onClick={handleCreate} className="bg-blue-500 text-white px-4">Thêm</button>
+            {/* Topic Selection */}
+            <div className="mb-6">
+                <h3 className="text-lg mb-2">Chọn chủ đề:</h3>
+                <select
+                    value={selectedTopic?.id || ''}
+                    onChange={(e) => {
+                        const topic = topics.find(t => t.id === e.target.value);
+                        setSelectedTopic(topic);
+                    }}
+                    className="w-full md:w-64 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="">-- Chọn chủ đề --</option>
+                    {topics.map((topic) => (
+                        <option key={topic.id} value={topic.id}>
+                            {topic.icon} {topic.name}
+                        </option>
+                    ))}
+                </select>
             </div>
 
-            {posts.map((post) => (
-                <PostItem key={post.id} post={post} onDelete={handleDelete} onUpdate={handleUpdate} />
-            ))}
+            {/* Action Buttons */}
+            {selectedTopic && (
+                <div className="flex gap-4 mb-6">
+                    <button
+                        onClick={() => {
+                            setShowAddPost(true);
+                            setShowAddField(false);
+                        }}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    >
+                        Thêm bài viết
+                    </button>
+                    <button
+                        onClick={() => {
+                            setShowAddField(true);
+                            setShowAddPost(false);
+                        }}
+                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                    >
+                        Thêm trường hiển thị
+                    </button>
+                </div>
+            )}
+
+            {/* Add Post Form */}
+            {showAddPost && selectedTopic && (
+                <div className="mb-6 p-4 border rounded-lg">
+                    <h3 className="text-lg mb-2">Thêm bài viết mới cho chủ đề: {selectedTopic.name}</h3>
+                    <div className="flex gap-2">
+                        <input
+                            className="border px-2 py-1 flex-grow"
+                            value={newPost}
+                            onChange={(e) => setNewPost(e.target.value)}
+                            placeholder="Nội dung bài viết mới"
+                        />
+                        <button onClick={handleCreate} className="bg-blue-500 text-white px-4 py-1">
+                            Thêm
+                        </button>
+                        <button 
+                            onClick={() => setShowAddPost(false)} 
+                            className="bg-gray-500 text-white px-4 py-1"
+                        >
+                            Hủy
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Field Form */}
+            {showAddField && selectedTopic && (
+                <div className="mb-6 p-4 border rounded-lg">
+                    <h3 className="text-lg mb-2">Thêm trường hiển thị cho chủ đề: {selectedTopic.name}</h3>
+                    <p className="text-gray-600 mb-4">Chức năng đang được phát triển...</p>
+                    <button 
+                        onClick={() => setShowAddField(false)} 
+                        className="bg-gray-500 text-white px-4 py-1"
+                    >
+                        Đóng
+                    </button>
+                </div>
+            )}
+
+            {/* Posts List */}
+            {selectedTopic && (
+                <div>
+                    <h3 className="text-lg mb-2">Danh sách bài viết:</h3>
+                    {posts.map((post) => (
+                        <PostItem key={post.id} post={post} onDelete={handleDelete} onUpdate={handleUpdate} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
-
 
 function PostItem({ post, onDelete, onUpdate }) {
     const [editing, setEditing] = useState(false);
     const [text, setText] = useState(post.content);
 
     return (
-        <div className="border p-2 mb-2">
+        <div className="border p-4 mb-4 rounded-lg">
             {editing ? (
-                <input value={text} onChange={(e) => setText(e.target.value)} />
+                <input 
+                    value={text} 
+                    onChange={(e) => setText(e.target.value)}
+                    className="w-full border px-2 py-1 mb-2"
+                />
             ) : (
-                <div>{post.content}</div>
+                <div className="mb-2">{post.content}</div>
             )}
 
-            <div className="flex gap-2 mt-2">
+            <div className="flex gap-2">
                 {editing ? (
-                    <button onClick={() => { onUpdate(post.id, text); setEditing(false); }} className="text-green-600">Lưu</button>
+                    <button 
+                        onClick={() => { onUpdate(post.id, text); setEditing(false); }} 
+                        className="text-green-600 hover:text-green-700"
+                    >
+                        Lưu
+                    </button>
                 ) : (
-                    <button onClick={() => setEditing(true)} className="text-blue-600">Sửa</button>
+                    <button 
+                        onClick={() => setEditing(true)} 
+                        className="text-blue-600 hover:text-blue-700"
+                    >
+                        Sửa
+                    </button>
                 )}
-                <button onClick={() => onDelete(post.id)} className="text-red-600">Xoá</button>
+                <button 
+                    onClick={() => onDelete(post.id)} 
+                    className="text-red-600 hover:text-red-700"
+                >
+                    Xoá
+                </button>
             </div>
         </div>
     );
