@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../config/api';
 import { useTopics } from '../context/TopicContext';
+import { useNavigate } from 'react-router-dom';
+import TopicFieldManager from '../components/TopicFieldManager';
 
 // Thêm interceptor để tự động thêm token vào header
 api.interceptors.request.use((config) => {
@@ -25,325 +27,469 @@ api.interceptors.response.use(
 );
 
 export default function Posts() {
-    const [posts, setPosts] = useState([]);
-    const [newPost, setNewPost] = useState('');
+    const navigate = useNavigate();
+    const [topics, setTopics] = useState([]);
     const [selectedTopic, setSelectedTopic] = useState(null);
-    const [showAddPost, setShowAddPost] = useState(false);
-    const [showAddField, setShowAddField] = useState(false);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [isRegistering, setIsRegistering] = useState(false);
-    const [authForm, setAuthForm] = useState({
-        username: '',
-        password: '',
-        confirmPassword: ''
+    const [posts, setPosts] = useState([]);
+    const [showPostModal, setShowPostModal] = useState(false);
+    const [showFieldManager, setShowFieldManager] = useState(false);
+    const [topicFields, setTopicFields] = useState([]);
+    const [currentPost, setCurrentPost] = useState({
+        id: null,
+        title: '',
+        fields: {}
     });
     const [error, setError] = useState('');
-    const { topics, loading } = useTopics();
+    const { topics: contextTopics, loading } = useTopics();
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            setIsLoggedIn(true);
-            if (selectedTopic) {
-                fetchPosts();
-            }
+        fetchTopics();
+    }, []);
+
+    useEffect(() => {
+        if (selectedTopic) {
+            fetchPosts();
+            fetchTopicFields();
         }
     }, [selectedTopic]);
 
-    const handleAuth = async (e) => {
-        e.preventDefault();
-        setError('');
-
-        if (isRegistering && authForm.password !== authForm.confirmPassword) {
-            setError('Mật khẩu xác nhận không khớp');
-            return;
-        }
-
+    const fetchTopics = async () => {
         try {
-            if (isRegistering) {
-                const response = await api.post('/api/auth/register', {
-                    username: authForm.username,
-                    password: authForm.password
-                });
-                setIsRegistering(false);
-                setAuthForm({ ...authForm, password: '', confirmPassword: '' });
-                alert('Đăng ký thành công! Vui lòng đăng nhập.');
-            } else {
-                const response = await api.post('/api/auth/login', {
-                    username: authForm.username,
-                    password: authForm.password
-                });
-                localStorage.setItem('token', response.data.token);
-                setIsLoggedIn(true);
-            }
+            const response = await api.get('/api/topics/main');
+            setTopics(response.data);
         } catch (error) {
-            setError(error.response?.data?.message || error.message);
+            console.error('Error fetching topics:', error);
+            setError('Không thể tải danh sách chủ đề');
         }
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        setIsLoggedIn(false);
-        setPosts([]);
-        setSelectedTopic(null);
     };
 
     const fetchPosts = async () => {
         try {
-            const res = await api.get(`/api/posts?topicId=${selectedTopic.id}`);
-            setPosts(res.data);
+            const response = await api.get(`/api/posts?topicId=${selectedTopic.id}`);
+            setPosts(response.data);
         } catch (error) {
             console.error('Error fetching posts:', error);
-            if (error.response?.status === 401) {
-                handleLogout();
-            }
+            setError('Không thể tải danh sách bài viết');
         }
     };
 
-    const handleCreate = async () => {
+    const fetchTopicFields = async () => {
         try {
-            await api.post('/api/posts', { 
-                content: newPost,
-                topicId: selectedTopic.id 
+            const response = await api.get(`/api/topic-fields/topic/${selectedTopic.id}`);
+            setTopicFields(response.data);
+        } catch (error) {
+            console.error('Error fetching topic fields:', error);
+        }
+    };
+
+    const handleOpenPostModal = (post = null) => {
+        if (post) {
+            setCurrentPost({
+                id: post.id,
+                title: post.title,
+                fields: post.fields || {}
             });
-            setNewPost('');
-            fetchPosts();
-            setShowAddPost(false);
-        } catch (error) {
-            console.error('Error creating post:', error);
-            if (error.response?.status === 401) {
-                handleLogout();
-            }
+        } else {
+            setCurrentPost({
+                id: null,
+                title: '',
+                fields: {}
+            });
         }
+        setShowPostModal(true);
     };
 
-    const handleDelete = async (id) => {
+    const handleSavePost = async (e) => {
+        e.preventDefault();
         try {
-            await api.delete(`/api/posts/${id}`);
+            const postData = {
+                ...currentPost,
+                topicId: selectedTopic.id
+            };
+
+            if (currentPost.id) {
+                await api.put(`/api/posts/${currentPost.id}`, postData);
+            } else {
+                await api.post('/api/posts', postData);
+            }
+
+            setShowPostModal(false);
             fetchPosts();
         } catch (error) {
-            console.error('Error deleting post:', error);
-            if (error.response?.status === 401) {
-                handleLogout();
+            setError('Không thể lưu bài viết');
+        }
+    };
+
+    const handleDeletePost = async (postId) => {
+        if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
+            try {
+                await api.delete(`/api/posts/${postId}`);
+                fetchPosts();
+            } catch (error) {
+                setError('Không thể xóa bài viết');
             }
         }
     };
 
-    const handleUpdate = async (id, updatedContent) => {
+    const handleFileUpload = async (file, fieldKey) => {
         try {
-            await api.put(`/api/posts/${id}`, { content: updatedContent });
-            fetchPosts();
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await api.post('/api/files/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            setCurrentPost({
+                ...currentPost,
+                fields: { ...currentPost.fields, [fieldKey]: response.data }
+            });
         } catch (error) {
-            console.error('Error updating post:', error);
-            if (error.response?.status === 401) {
-                handleLogout();
-            }
+            console.error('Error uploading file:', error);
+            setError('Không thể upload file');
         }
     };
 
-    if (!isLoggedIn) {
-        return (
-            <div className="p-4">
-                <h2 className="text-xl mb-4">{isRegistering ? 'Đăng ký' : 'Đăng nhập'}</h2>
-                <form onSubmit={handleAuth} className="max-w-md">
-                    <div className="mb-4">
+    const handleFileDelete = async (fieldKey) => {
+        try {
+            const currentValue = currentPost.fields[fieldKey];
+            if (currentValue) {
+                // Lấy tên file từ đường dẫn
+                const filename = currentValue.split('/').pop();
+                await api.delete(`/api/files/${filename}`);
+            }
+
+            setCurrentPost({
+                ...currentPost,
+                fields: { ...currentPost.fields, [fieldKey]: null }
+            });
+        } catch (error) {
+            console.error('Error deleting file:', error);
+            setError('Không thể xóa file');
+        }
+    };
+
+    const renderFieldInput = (field) => {
+        switch (field.type) {
+            case 'text':
+                return (
+                    <input
+                        type="text"
+                        value={currentPost.fields[field.key] || ''}
+                        onChange={(e) => setCurrentPost({
+                            ...currentPost,
+                            fields: { ...currentPost.fields, [field.key]: e.target.value }
+                        })}
+                        className="mt-1 block w-full border rounded-md shadow-sm p-2"
+                        required={field.required}
+                    />
+                );
+            case 'number':
+                return (
+                    <input
+                        type="number"
+                        value={currentPost.fields[field.key] || ''}
+                        onChange={(e) => setCurrentPost({
+                            ...currentPost,
+                            fields: { ...currentPost.fields, [field.key]: e.target.value }
+                        })}
+                        className="mt-1 block w-full border rounded-md shadow-sm p-2"
+                        required={field.required}
+                    />
+                );
+            case 'date':
+                return (
+                    <input
+                        type="date"
+                        value={currentPost.fields[field.key] || ''}
+                        onChange={(e) => setCurrentPost({
+                            ...currentPost,
+                            fields: { ...currentPost.fields, [field.key]: e.target.value }
+                        })}
+                        className="mt-1 block w-full border rounded-md shadow-sm p-2"
+                        required={field.required}
+                    />
+                );
+            case 'image':
+                return (
+                    <div>
                         <input
-                            type="text"
-                            className="border px-2 py-1 w-full"
-                            placeholder="Username"
-                            value={authForm.username}
-                            onChange={(e) => setAuthForm({...authForm, username: e.target.value})}
-                        />
-                    </div>
-                    <div className="mb-4">
-                        <input
-                            type="password"
-                            className="border px-2 py-1 w-full"
-                            placeholder="Password"
-                            value={authForm.password}
-                            onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
-                        />
-                    </div>
-                    {isRegistering && (
-                        <div className="mb-4">
-                            <input
-                                type="password"
-                                className="border px-2 py-1 w-full"
-                                placeholder="Confirm Password"
-                                value={authForm.confirmPassword}
-                                onChange={(e) => setAuthForm({...authForm, confirmPassword: e.target.value})}
-                            />
-                        </div>
-                    )}
-                    {error && (
-                        <div className="text-red-500 mb-4">
-                            {error}
-                        </div>
-                    )}
-                    <div className="flex gap-2">
-                        <button type="submit" className="bg-blue-500 text-white px-4 py-1">
-                            {isRegistering ? 'Đăng ký' : 'Đăng nhập'}
-                        </button>
-                        <button 
-                            type="button" 
-                            className="text-blue-500"
-                            onClick={() => {
-                                setIsRegistering(!isRegistering);
-                                setError('');
-                                setAuthForm({ username: '', password: '', confirmPassword: '' });
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    handleFileUpload(file, field.key);
+                                }
                             }}
-                        >
-                            {isRegistering ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký'}
-                        </button>
+                            className="mt-1 block w-full"
+                            required={field.required && !currentPost.fields[field.key]}
+                        />
+                        {currentPost.fields[field.key] && (
+                            <div className="mt-2">
+                                <img
+                                    src={`http://localhost:3000${currentPost.fields[field.key]}`}
+                                    alt="Preview"
+                                    className="max-w-xs h-auto rounded-lg"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => handleFileDelete(field.key)}
+                                    className="mt-2 text-red-600 hover:text-red-800"
+                                >
+                                    Xóa ảnh
+                                </button>
+                            </div>
+                        )}
                     </div>
-                </form>
-            </div>
-        );
-    }
+                );
+            case 'video':
+                return (
+                    <div>
+                        <input
+                            type="file"
+                            accept="video/*"
+                            onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    handleFileUpload(file, field.key);
+                                }
+                            }}
+                            className="mt-1 block w-full"
+                            required={field.required && !currentPost.fields[field.key]}
+                        />
+                        {currentPost.fields[field.key] && (
+                            <div className="mt-2">
+                                <video
+                                    src={`http://localhost:3000${currentPost.fields[field.key]}`}
+                                    controls
+                                    className="max-w-xs rounded-lg"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => handleFileDelete(field.key)}
+                                    className="mt-2 text-red-600 hover:text-red-800"
+                                >
+                                    Xóa video
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                );
+            case 'array':
+                return (
+                    <textarea
+                        value={Array.isArray(currentPost.fields[field.key]) 
+                            ? currentPost.fields[field.key].join('\n')
+                            : ''}
+                        onChange={(e) => setCurrentPost({
+                            ...currentPost,
+                            fields: { ...currentPost.fields, [field.key]: e.target.value.split('\n') }
+                        })}
+                        className="mt-1 block w-full border rounded-md shadow-sm p-2"
+                        rows="3"
+                        placeholder="Mỗi dòng một mục"
+                        required={field.required}
+                    />
+                );
+            default:
+                return null;
+        }
+    };
+
+    const renderFieldValue = (field, value) => {
+        if (!value) return null;
+
+        switch (field.type) {
+            case 'image':
+                return (
+                    <img
+                        src={value}
+                        alt={field.name}
+                        className="max-w-full h-auto rounded-lg"
+                    />
+                );
+            case 'video':
+                return (
+                    <video
+                        src={value}
+                        controls
+                        className="max-w-full rounded-lg"
+                    />
+                );
+            case 'array':
+                return (
+                    <ul className="list-disc list-inside">
+                        {value.map((item, index) => (
+                            <li key={index}>{item}</li>
+                        ))}
+                    </ul>
+                );
+            default:
+                return <span>{value}</span>;
+        }
+    };
 
     return (
-        <div className="p-4">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl">Bài viết</h2>
-                <button onClick={handleLogout} className="text-red-600">
-                    Đăng xuất
-                </button>
+        <div className="container mx-auto px-4 py-8">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold">Quản lý bài viết</h1>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setShowFieldManager(true)}
+                        className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                    >
+                        Quản lý trường
+                    </button>
+                    <button
+                        onClick={() => handleOpenPostModal()}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    >
+                        Thêm bài viết
+                    </button>
+                </div>
             </div>
 
-            {/* Topic Selection */}
+            {/* Chọn chủ đề */}
             <div className="mb-6">
-                <h3 className="text-lg mb-2">Chọn chủ đề:</h3>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Chọn chủ đề
+                </label>
                 <select
                     value={selectedTopic?.id || ''}
                     onChange={(e) => {
                         const topic = topics.find(t => t.id === e.target.value);
                         setSelectedTopic(topic);
                     }}
-                    className="w-full md:w-64 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="block w-full border rounded-md shadow-sm p-2"
                 >
-                    <option value="">-- Chọn chủ đề --</option>
+                    <option value="">Chọn chủ đề</option>
                     {topics.map((topic) => (
                         <option key={topic.id} value={topic.id}>
-                            {topic.icon} {topic.name}
+                            {topic.name}
                         </option>
                     ))}
                 </select>
             </div>
 
-            {/* Action Buttons */}
+            {/* Danh sách bài viết */}
             {selectedTopic && (
-                <div className="flex gap-4 mb-6">
-                    <button
-                        onClick={() => {
-                            setShowAddPost(true);
-                            setShowAddField(false);
-                        }}
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                    >
-                        Thêm bài viết
-                    </button>
-                    <button
-                        onClick={() => {
-                            setShowAddField(true);
-                            setShowAddPost(false);
-                        }}
-                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                    >
-                        Thêm trường hiển thị
-                    </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {posts.map((post) => (
+                        <div key={post.id} className="border rounded-lg p-4">
+                            <h3 className="text-lg font-semibold mb-2">{post.title}</h3>
+                            <div className="space-y-2">
+                                {topicFields.map((field) => (
+                                    <div key={field.id}>
+                                        <h4 className="text-sm font-medium text-gray-700">
+                                            {field.name}:
+                                        </h4>
+                                        <div className="mt-1">
+                                            {renderFieldValue(field, post.fields[field.key])}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-4 flex justify-end gap-2">
+                                <button
+                                    onClick={() => handleOpenPostModal(post)}
+                                    className="text-blue-600 hover:text-blue-800"
+                                >
+                                    Sửa
+                                </button>
+                                <button
+                                    onClick={() => handleDeletePost(post.id)}
+                                    className="text-red-600 hover:text-red-800"
+                                >
+                                    Xóa
+                                </button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
 
-            {/* Add Post Form */}
-            {showAddPost && selectedTopic && (
-                <div className="mb-6 p-4 border rounded-lg">
-                    <h3 className="text-lg mb-2">Thêm bài viết mới cho chủ đề: {selectedTopic.name}</h3>
-                    <div className="flex gap-2">
-                        <input
-                            className="border px-2 py-1 flex-grow"
-                            value={newPost}
-                            onChange={(e) => setNewPost(e.target.value)}
-                            placeholder="Nội dung bài viết mới"
-                        />
-                        <button onClick={handleCreate} className="bg-blue-500 text-white px-4 py-1">
-                            Thêm
-                        </button>
-                        <button 
-                            onClick={() => setShowAddPost(false)} 
-                            className="bg-gray-500 text-white px-4 py-1"
-                        >
-                            Hủy
-                        </button>
+            {/* Modal thêm/sửa bài viết */}
+            {showPostModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">
+                                {currentPost.id ? 'Sửa bài viết' : 'Thêm bài viết mới'}
+                            </h2>
+                            <button
+                                onClick={() => setShowPostModal(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                Đóng
+                            </button>
+                        </div>
+                        <form onSubmit={handleSavePost}>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Tiêu đề
+                                </label>
+                                <input
+                                    type="text"
+                                    value={currentPost.title}
+                                    onChange={(e) => setCurrentPost({ ...currentPost, title: e.target.value })}
+                                    className="mt-1 block w-full border rounded-md shadow-sm p-2"
+                                    required
+                                />
+                            </div>
+                            {topicFields.map((field) => (
+                                <div key={field.id} className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        {field.name}
+                                        {field.required && <span className="text-red-500">*</span>}
+                                    </label>
+                                    {renderFieldInput(field)}
+                                    {field.description && (
+                                        <p className="mt-1 text-sm text-gray-500">
+                                            {field.description}
+                                        </p>
+                                    )}
+                                </div>
+                            ))}
+                            <div className="mt-6 flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPostModal(false)}
+                                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                                >
+                                    {currentPost.id ? 'Cập nhật' : 'Tạo bài viết'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
 
-            {/* Add Field Form */}
-            {showAddField && selectedTopic && (
-                <div className="mb-6 p-4 border rounded-lg">
-                    <h3 className="text-lg mb-2">Thêm trường hiển thị cho chủ đề: {selectedTopic.name}</h3>
-                    <p className="text-gray-600 mb-4">Chức năng đang được phát triển...</p>
-                    <button 
-                        onClick={() => setShowAddField(false)} 
-                        className="bg-gray-500 text-white px-4 py-1"
-                    >
-                        Đóng
-                    </button>
+            {/* Modal quản lý trường */}
+            {showFieldManager && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <TopicFieldManager
+                            topic={selectedTopic}
+                            onClose={() => setShowFieldManager(false)}
+                        />
+                    </div>
                 </div>
             )}
 
-            {/* Posts List */}
-            {selectedTopic && (
-                <div>
-                    <h3 className="text-lg mb-2">Danh sách bài viết:</h3>
-                    {posts.map((post) => (
-                        <PostItem key={post.id} post={post} onDelete={handleDelete} onUpdate={handleUpdate} />
-                    ))}
+            {error && (
+                <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
+                    {error}
                 </div>
             )}
-        </div>
-    );
-}
-
-function PostItem({ post, onDelete, onUpdate }) {
-    const [editing, setEditing] = useState(false);
-    const [text, setText] = useState(post.content);
-
-    return (
-        <div className="border p-4 mb-4 rounded-lg">
-            {editing ? (
-                <input 
-                    value={text} 
-                    onChange={(e) => setText(e.target.value)}
-                    className="w-full border px-2 py-1 mb-2"
-                />
-            ) : (
-                <div className="mb-2">{post.content}</div>
-            )}
-
-            <div className="flex gap-2">
-                {editing ? (
-                    <button 
-                        onClick={() => { onUpdate(post.id, text); setEditing(false); }} 
-                        className="text-green-600 hover:text-green-700"
-                    >
-                        Lưu
-                    </button>
-                ) : (
-                    <button 
-                        onClick={() => setEditing(true)} 
-                        className="text-blue-600 hover:text-blue-700"
-                    >
-                        Sửa
-                    </button>
-                )}
-                <button 
-                    onClick={() => onDelete(post.id)} 
-                    className="text-red-600 hover:text-red-700"
-                >
-                    Xoá
-                </button>
-            </div>
         </div>
     );
 }

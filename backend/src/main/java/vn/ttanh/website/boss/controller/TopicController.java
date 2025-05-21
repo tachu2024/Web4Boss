@@ -19,72 +19,82 @@ public class TopicController {
         this.topicRepository = topicRepository;
     }
 
-    // Lấy tất cả topic của user
-    @GetMapping
-    public List<Topic> getTopics(Authentication authentication) {
-        String username = authentication.getName();
-        log.info("Retrieving topics for user: " + username);
-        return topicRepository.findByUserId(username);
+    @GetMapping("/{id}")
+    public Topic getTopic(@PathVariable String id, Authentication authentication) {
+        log.info("Fetching topic with id: {} for user: {}", id, authentication.getName());
+        Topic topic = topicRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Topic not found"));
+        
+        // Kiểm tra quyền truy cập
+        if (!topic.getUserId().equals(authentication.getName())) {
+            throw new RuntimeException("Unauthorized to access this topic");
+        }
+        
+        return topic;
     }
 
-    // Lấy các topic chính (không có parent)
     @GetMapping("/main")
     public List<Topic> getMainTopics(Authentication authentication) {
-        String username = authentication.getName();
-        log.info("Retrieving main topics for user: " + username);
-        return topicRepository.findByUserIdAndParentIdIsNull(username);
+        log.info("Fetching main topics for user: {}", authentication.getName());
+        return topicRepository.findByUserIdAndParentIdIsNull(authentication.getName());
     }
 
-    // Lấy các topic con của một topic
-    @GetMapping("/{parentId}/children")
-    public List<Topic> getChildTopics(@PathVariable String parentId) {
-        log.info("Retrieving child topics for parent: " + parentId);
-        return topicRepository.findByParentId(parentId);
+    @GetMapping("/{id}/children")
+    public List<Topic> getChildTopics(@PathVariable String id, Authentication authentication) {
+        log.info("Fetching children for topic: {} and user: {}", id, authentication.getName());
+        // Kiểm tra quyền truy cập topic cha
+        Topic parentTopic = topicRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Parent topic not found"));
+        
+        if (!parentTopic.getUserId().equals(authentication.getName())) {
+            throw new RuntimeException("Unauthorized to access this topic's children");
+        }
+        
+        return topicRepository.findByParentId(id);
     }
 
-    // Tạo topic mới
     @PostMapping
     public Topic createTopic(@RequestBody Topic topic, Authentication authentication) {
-        String username = authentication.getName();
-        log.info("Creating new topic for user: " + username);
-        topic.setUserId(username);
-        topic.setActive(true);
+        log.info("Creating new topic: {} for user: {}", topic.getName(), authentication.getName());
+        topic.setUserId(authentication.getName());
         return topicRepository.save(topic);
     }
 
-    // Cập nhật topic
     @PutMapping("/{id}")
     public Topic updateTopic(@PathVariable String id, @RequestBody Topic updatedTopic, Authentication authentication) {
-        log.info("Updating topic: " + id);
-        Topic topic = topicRepository.findById(id)
+        log.info("Updating topic: {} for user: {}", id, authentication.getName());
+        Topic existingTopic = topicRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
-        
-        if (!topic.getUserId().equals(authentication.getName())) {
-            throw new RuntimeException("Not authorized");
+
+        // Kiểm tra quyền sở hữu
+        if (!existingTopic.getUserId().equals(authentication.getName())) {
+            throw new RuntimeException("Unauthorized to update this topic");
         }
 
-        topic.setName(updatedTopic.getName());
-        topic.setDescription(updatedTopic.getDescription());
-        topic.setIcon(updatedTopic.getIcon());
-        return topicRepository.save(topic);
+        existingTopic.setName(updatedTopic.getName());
+        existingTopic.setDescription(updatedTopic.getDescription());
+        existingTopic.setIcon(updatedTopic.getIcon());
+        existingTopic.setParentId(updatedTopic.getParentId());
+
+        return topicRepository.save(existingTopic);
     }
 
-    // Xóa topic
     @DeleteMapping("/{id}")
     public void deleteTopic(@PathVariable String id, Authentication authentication) {
-        log.info("Deleting topic: " + id);
+        log.info("Deleting topic: {} for user: {}", id, authentication.getName());
         Topic topic = topicRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
-        
+
+        // Kiểm tra quyền sở hữu
         if (!topic.getUserId().equals(authentication.getName())) {
-            throw new RuntimeException("Not authorized");
+            throw new RuntimeException("Unauthorized to delete this topic");
         }
 
         // Xóa tất cả topic con trước
         List<Topic> childTopics = topicRepository.findByParentId(id);
         topicRepository.deleteAll(childTopics);
-        
+
         // Sau đó xóa topic chính
-        topicRepository.delete(topic);
+        topicRepository.deleteById(id);
     }
 } 
