@@ -4,7 +4,6 @@ import { useTopics } from '../context/TopicContext';
 import AuthLayout from '../components/AuthLayout';
 import loveImage from '../img/love.jpg';
 import for4Image from '../img/for4.jpg';
-import api from '../config/api';
 
 export default function Home() {
     const { topics, loading, refreshTopics } = useTopics();
@@ -33,14 +32,6 @@ export default function Home() {
             refreshTopics();
         }
     }, [isInitialized, refreshTopics]);
-
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userInfo');
-        setIsLoggedIn(false);
-        setUserInfo(null);
-        navigate('/login');
-    };
 
     if (!isLoggedIn) {
         return (

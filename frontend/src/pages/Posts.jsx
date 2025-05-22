@@ -27,7 +27,6 @@ api.interceptors.response.use(
 );
 
 export default function Posts() {
-    const navigate = useNavigate();
     const [topics, setTopics] = useState([]);
     const [selectedTopic, setSelectedTopic] = useState(null);
     const [posts, setPosts] = useState([]);
@@ -40,7 +39,6 @@ export default function Posts() {
         fields: {}
     });
     const [error, setError] = useState('');
-    const { topics: contextTopics, loading } = useTopics();
 
     useEffect(() => {
         fetchTopics();
