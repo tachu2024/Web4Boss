@@ -45,12 +45,71 @@ export default function ContentPage() {
 
         switch (field.type) {
             case 'image':
+                const images = Array.isArray(value) ? value : [value];
                 return (
-                    <img 
-                        src={`http://localhost:3000${value}`}
-                        alt={field.name} 
-                        className="w-full h-48 object-cover rounded"
-                    />
+                    <div className="relative">
+                        <div className="flex items-center justify-center">
+                            <img 
+                                src={`http://localhost:3000${images[0]}`}
+                                alt={field.name} 
+                                className="w-full h-48 object-cover rounded"
+                            />
+                        </div>
+                        {images.length > 1 && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const newImages = [...images];
+                                        const first = newImages.shift();
+                                        newImages.push(first);
+                                        // Update the post's fields
+                                        const updatedPosts = posts.map(post => {
+                                            if (post.fields[field.key] === value) {
+                                                return {
+                                                    ...post,
+                                                    fields: {
+                                                        ...post.fields,
+                                                        [field.key]: newImages
+                                                    }
+                                                };
+                                            }
+                                            return post;
+                                        });
+                                        setPosts(updatedPosts);
+                                    }}
+                                    className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-r hover:bg-opacity-75"
+                                >
+                                    ←
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const newImages = [...images];
+                                        const last = newImages.pop();
+                                        newImages.unshift(last);
+                                        // Update the post's fields
+                                        const updatedPosts = posts.map(post => {
+                                            if (post.fields[field.key] === value) {
+                                                return {
+                                                    ...post,
+                                                    fields: {
+                                                        ...post.fields,
+                                                        [field.key]: newImages
+                                                    }
+                                                };
+                                            }
+                                            return post;
+                                        });
+                                        setPosts(updatedPosts);
+                                    }}
+                                    className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-l hover:bg-opacity-75"
+                                >
+                                    →
+                                </button>
+                            </>
+                        )}
+                    </div>
                 );
             case 'video':
                 return (

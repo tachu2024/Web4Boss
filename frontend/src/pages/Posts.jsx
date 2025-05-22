@@ -144,7 +144,12 @@ export default function Posts() {
 
             setCurrentPost({
                 ...currentPost,
-                fields: { ...currentPost.fields, [fieldKey]: response.data }
+                fields: { 
+                    ...currentPost.fields, 
+                    [fieldKey]: Array.isArray(currentPost.fields[fieldKey]) 
+                        ? [...currentPost.fields[fieldKey], response.data]
+                        : [response.data]
+                }
             });
         } catch (error) {
             console.error('Error uploading file:', error);
@@ -152,19 +157,24 @@ export default function Posts() {
         }
     };
 
-    const handleFileDelete = async (fieldKey) => {
+    const handleFileDelete = async (fieldKey, index) => {
         try {
             const currentValue = currentPost.fields[fieldKey];
-            if (currentValue) {
-                // Lấy tên file từ đường dẫn
-                const filename = currentValue.split('/').pop();
+            if (currentValue && currentValue[index]) {
+                const filename = currentValue[index].split('/').pop();
                 await api.delete(`/api/files/${filename}`);
+                
+                const newImages = [...currentValue];
+                newImages.splice(index, 1);
+                
+                setCurrentPost({
+                    ...currentPost,
+                    fields: { 
+                        ...currentPost.fields, 
+                        [fieldKey]: newImages.length > 0 ? newImages : null 
+                    }
+                });
             }
-
-            setCurrentPost({
-                ...currentPost,
-                fields: { ...currentPost.fields, [fieldKey]: null }
-            });
         } catch (error) {
             console.error('Error deleting file:', error);
             setError('Không thể xóa file');
@@ -219,28 +229,83 @@ export default function Posts() {
                             type="file"
                             accept="image/*"
                             onChange={(e) => {
+                                e.preventDefault();
                                 const file = e.target.files[0];
                                 if (file) {
                                     handleFileUpload(file, field.key);
                                 }
                             }}
                             className="mt-1 block w-full"
-                            required={field.required && !currentPost.fields[field.key]}
+                            required={field.required && (!currentPost.fields[field.key] || currentPost.fields[field.key].length === 0)}
                         />
-                        {currentPost.fields[field.key] && (
-                            <div className="mt-2">
-                                <img
-                                    src={`http://localhost:3000${currentPost.fields[field.key]}`}
-                                    alt="Preview"
-                                    className="max-w-xs h-auto rounded-lg"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => handleFileDelete(field.key)}
-                                    className="mt-2 text-red-600 hover:text-red-800"
-                                >
-                                    Xóa ảnh
-                                </button>
+                        {currentPost.fields[field.key] && currentPost.fields[field.key].length > 0 && (
+                            <div className="mt-4">
+                                <div className="relative">
+                                    <div className="flex items-center justify-center">
+                                        <img
+                                            src={`http://localhost:3000${currentPost.fields[field.key][0]}`}
+                                            alt="Preview"
+                                            className="max-w-full h-64 object-contain rounded-lg"
+                                        />
+                                    </div>
+                                    {currentPost.fields[field.key].length > 1 && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    const newImages = [...currentPost.fields[field.key]];
+                                                    const first = newImages.shift();
+                                                    newImages.push(first);
+                                                    setCurrentPost({
+                                                        ...currentPost,
+                                                        fields: { ...currentPost.fields, [field.key]: newImages }
+                                                    });
+                                                }}
+                                                className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-r hover:bg-opacity-75"
+                                            >
+                                                ←
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    const newImages = [...currentPost.fields[field.key]];
+                                                    const last = newImages.pop();
+                                                    newImages.unshift(last);
+                                                    setCurrentPost({
+                                                        ...currentPost,
+                                                        fields: { ...currentPost.fields, [field.key]: newImages }
+                                                    });
+                                                }}
+                                                className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-l hover:bg-opacity-75"
+                                            >
+                                                →
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {currentPost.fields[field.key].map((image, index) => (
+                                        <div key={index} className="relative">
+                                            <img
+                                                src={`http://localhost:3000${image}`}
+                                                alt={`Preview ${index + 1}`}
+                                                className="w-20 h-20 object-cover rounded"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    handleFileDelete(field.key, index);
+                                                }}
+                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -252,6 +317,7 @@ export default function Posts() {
                             type="file"
                             accept="video/*"
                             onChange={(e) => {
+                                e.preventDefault();
                                 const file = e.target.files[0];
                                 if (file) {
                                     handleFileUpload(file, field.key);
@@ -269,7 +335,10 @@ export default function Posts() {
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => handleFileDelete(field.key)}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        handleFileDelete(field.key);
+                                    }}
                                     className="mt-2 text-red-600 hover:text-red-800"
                                 >
                                     Xóa video
@@ -304,9 +373,68 @@ export default function Posts() {
 
         switch (field.type) {
             case 'image':
+                if (Array.isArray(value)) {
+                    return (
+                        <div className="relative">
+                            <div className="flex items-center justify-center">
+                                <img
+                                    src={`http://localhost:3000${value[0]}`}
+                                    alt={field.name}
+                                    className="max-w-full h-64 object-contain rounded-lg"
+                                />
+                            </div>
+                            {value.length > 1 && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            const newImages = [...value];
+                                            const first = newImages.shift();
+                                            newImages.push(first);
+                                            setCurrentPost({
+                                                ...currentPost,
+                                                fields: { ...currentPost.fields, [field.key]: newImages }
+                                            });
+                                        }}
+                                        className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-r hover:bg-opacity-75"
+                                    >
+                                        ←
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            const newImages = [...value];
+                                            const last = newImages.pop();
+                                            newImages.unshift(last);
+                                            setCurrentPost({
+                                                ...currentPost,
+                                                fields: { ...currentPost.fields, [field.key]: newImages }
+                                            });
+                                        }}
+                                        className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-l hover:bg-opacity-75"
+                                    >
+                                        →
+                                    </button>
+                                </>
+                            )}
+                            <div className="mt-2 flex flex-wrap gap-2">
+                                {value.map((image, index) => (
+                                    <img
+                                        key={index}
+                                        src={`http://localhost:3000${image}`}
+                                        alt={`${field.name} ${index + 1}`}
+                                        className="w-20 h-20 object-cover rounded"
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    );
+                }
                 return (
                     <img
-                        src={value}
+                        src={`http://localhost:3000${value}`}
                         alt={field.name}
                         className="max-w-full h-auto rounded-lg"
                     />
@@ -314,7 +442,7 @@ export default function Posts() {
             case 'video':
                 return (
                     <video
-                        src={value}
+                        src={`http://localhost:3000${value}`}
                         controls
                         className="max-w-full rounded-lg"
                     />
@@ -381,16 +509,87 @@ export default function Posts() {
                         <div key={post.id} className="border rounded-lg p-4">
                             <h3 className="text-lg font-semibold mb-2">{post.title}</h3>
                             <div className="space-y-2">
-                                {topicFields.map((field) => (
-                                    <div key={field.id}>
-                                        <h4 className="text-sm font-medium text-gray-700">
-                                            {field.name}:
-                                        </h4>
-                                        <div className="mt-1">
-                                            {renderFieldValue(field, post.fields[field.key])}
+                                {topicFields.map((field) => {
+                                    const value = post.fields[field.key];
+                                    if (!value) return null;
+
+                                    if (field.type === 'image') {
+                                        const images = Array.isArray(value) ? value : [value];
+                                        return (
+                                            <div key={field.id} className="relative">
+                                                <div className="flex items-center justify-center">
+                                                    <img
+                                                        src={`http://localhost:3000${images[0]}`}
+                                                        alt={field.name}
+                                                        className="max-w-full h-48 object-contain rounded-lg"
+                                                    />
+                                                </div>
+                                                {images.length > 1 && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newImages = [...images];
+                                                                const first = newImages.shift();
+                                                                newImages.push(first);
+                                                                const updatedPosts = posts.map(p => {
+                                                                    if (p.id === post.id) {
+                                                                        return {
+                                                                            ...p,
+                                                                            fields: {
+                                                                                ...p.fields,
+                                                                                [field.key]: newImages
+                                                                            }
+                                                                        };
+                                                                    }
+                                                                    return p;
+                                                                });
+                                                                setPosts(updatedPosts);
+                                                            }}
+                                                            className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-r hover:bg-opacity-75"
+                                                        >
+                                                            ←
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newImages = [...images];
+                                                                const last = newImages.pop();
+                                                                newImages.unshift(last);
+                                                                const updatedPosts = posts.map(p => {
+                                                                    if (p.id === post.id) {
+                                                                        return {
+                                                                            ...p,
+                                                                            fields: {
+                                                                                ...p.fields,
+                                                                                [field.key]: newImages
+                                                                            }
+                                                                        };
+                                                                    }
+                                                                    return p;
+                                                                });
+                                                                setPosts(updatedPosts);
+                                                            }}
+                                                            className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-l hover:bg-opacity-75"
+                                                        >
+                                                            →
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+                                    return (
+                                        <div key={field.id}>
+                                            <h4 className="text-sm font-medium text-gray-700">
+                                                {field.name}:
+                                            </h4>
+                                            <div className="mt-1">
+                                                {renderFieldValue(field, value)}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <div className="mt-4 flex justify-end gap-2">
                                 <button
