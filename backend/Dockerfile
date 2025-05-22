@@ -6,7 +6,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Run stage
-FROM openjdk:18-jre-slim
+FROM eclipse-temurin:18-jre
 WORKDIR /backend
 COPY --from=build /backend/target/*.jar app.jar
 
