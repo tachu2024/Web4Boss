@@ -50,7 +50,7 @@ export default function ContentPage() {
                     <div className="relative">
                         <div className="flex items-center justify-center">
                             <img 
-                                src={`http://localhost:3000${images[0]}`}
+                                src={images[0]}
                                 alt={field.name} 
                                 className="w-full h-48 object-cover rounded"
                             />
@@ -114,7 +114,7 @@ export default function ContentPage() {
             case 'video':
                 return (
                     <video 
-                        src={`http://localhost:3000${value}`}
+                        src={value}
                         controls 
                         className="w-full rounded"
                     />

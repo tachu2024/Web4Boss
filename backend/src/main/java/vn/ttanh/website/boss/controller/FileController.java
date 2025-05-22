@@ -1,61 +1,46 @@
 package vn.ttanh.website.boss.controller;
 
-import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import lombok.extern.slf4j.Slf4j;
+import vn.ttanh.website.boss.service.S3Service;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/files")
 public class FileController {
 
-    @Value("${app.upload.dir}")
-    private String uploadDir;
+    private final S3Service s3Service;
+
+    public FileController(S3Service s3Service) {
+        this.s3Service = s3Service;
+    }
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
-            // Tạo thư mục nếu chưa tồn tại
-            File directory = new File(uploadDir);
-            if (!directory.exists()) {
-                directory.mkdirs();
-            }
-
-            // Tạo tên file ngẫu nhiên để tránh trùng lặp
-            String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            String newFilename = UUID.randomUUID().toString() + extension;
-
-            // Lưu file
-            Path filePath = Paths.get(uploadDir, newFilename);
-            Files.copy(file.getInputStream(), filePath);
-
-            // Trả về đường dẫn file
-            return ResponseEntity.ok("/uploads/" + newFilename);
+            String fileUrl = s3Service.uploadFile(file);
+            Map<String, String> response = new HashMap<>();
+            response.put("url", fileUrl);
+            log.info(fileUrl);
+            return ResponseEntity.ok(response);
         } catch (IOException e) {
-            log.error("Error uploading file: ", e);
-            return ResponseEntity.badRequest().body("Could not upload file");
+            return ResponseEntity.badRequest().body("Failed to upload file: " + e.getMessage());
         }
     }
 
-    @DeleteMapping("/{filename}")
-    public ResponseEntity<Void> deleteFile(@PathVariable String filename) {
+    @DeleteMapping("/{fileName}")
+    public ResponseEntity<?> deleteFile(@PathVariable String fileName) {
         try {
-            Path filePath = Paths.get(uploadDir, filename);
-            Files.deleteIfExists(filePath);
+            s3Service.deleteFile(fileName);
             return ResponseEntity.ok().build();
-        } catch (IOException e) {
-            log.error("Error deleting file: ", e);
-            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to delete file: " + e.getMessage());
         }
     }
 } 

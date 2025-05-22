@@ -142,13 +142,15 @@ export default function Posts() {
                 }
             });
 
+            console.log('Upload response:', response.data);
+
             setCurrentPost({
                 ...currentPost,
                 fields: { 
                     ...currentPost.fields, 
                     [fieldKey]: Array.isArray(currentPost.fields[fieldKey]) 
-                        ? [...currentPost.fields[fieldKey], response.data]
-                        : [response.data]
+                        ? [...currentPost.fields[fieldKey], response.data.url]
+                        : [response.data.url]
                 }
             });
         } catch (error) {
@@ -243,7 +245,7 @@ export default function Posts() {
                                 <div className="relative">
                                     <div className="flex items-center justify-center">
                                         <img
-                                            src={`http://localhost:3000${currentPost.fields[field.key][0]}`}
+                                            src={currentPost.fields[field.key][0]}
                                             alt="Preview"
                                             className="max-w-full h-64 object-contain rounded-lg"
                                         />
@@ -289,7 +291,7 @@ export default function Posts() {
                                     {currentPost.fields[field.key].map((image, index) => (
                                         <div key={index} className="relative">
                                             <img
-                                                src={`http://localhost:3000${image}`}
+                                                src={image}
                                                 alt={`Preview ${index + 1}`}
                                                 className="w-20 h-20 object-cover rounded"
                                             />
@@ -329,7 +331,7 @@ export default function Posts() {
                         {currentPost.fields[field.key] && (
                             <div className="mt-2">
                                 <video
-                                    src={`http://localhost:3000${currentPost.fields[field.key]}`}
+                                    src={currentPost.fields[field.key]}
                                     controls
                                     className="max-w-xs rounded-lg"
                                 />
@@ -371,16 +373,20 @@ export default function Posts() {
     const renderFieldValue = (field, value) => {
         if (!value) return null;
 
+        console.log('Field value:', field.name, value);
+
         switch (field.type) {
             case 'image':
                 if (Array.isArray(value)) {
+                    console.log('Image array:', value);
                     return (
                         <div className="relative">
                             <div className="flex items-center justify-center">
                                 <img
-                                    src={`http://localhost:3000${value[0]}`}
+                                    src={value[0]}
                                     alt={field.name}
                                     className="max-w-full h-64 object-contain rounded-lg"
+                                    onError={(e) => console.error('Image load error:', e.target.src)}
                                 />
                             </div>
                             {value.length > 1 && (
@@ -423,7 +429,7 @@ export default function Posts() {
                                 {value.map((image, index) => (
                                     <img
                                         key={index}
-                                        src={`http://localhost:3000${image}`}
+                                        src={image}
                                         alt={`${field.name} ${index + 1}`}
                                         className="w-20 h-20 object-cover rounded"
                                     />
@@ -434,7 +440,7 @@ export default function Posts() {
                 }
                 return (
                     <img
-                        src={`http://localhost:3000${value}`}
+                        src={value}
                         alt={field.name}
                         className="max-w-full h-auto rounded-lg"
                     />
@@ -442,7 +448,7 @@ export default function Posts() {
             case 'video':
                 return (
                     <video
-                        src={`http://localhost:3000${value}`}
+                        src={value}
                         controls
                         className="max-w-full rounded-lg"
                     />
@@ -519,7 +525,7 @@ export default function Posts() {
                                             <div key={field.id} className="relative">
                                                 <div className="flex items-center justify-center">
                                                     <img
-                                                        src={`http://localhost:3000${images[0]}`}
+                                                        src={images[0]}
                                                         alt={field.name}
                                                         className="max-w-full h-48 object-contain rounded-lg"
                                                     />
