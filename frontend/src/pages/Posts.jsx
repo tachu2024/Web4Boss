@@ -479,7 +479,10 @@ export default function Posts() {
                     <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                         <TopicFieldManager
                             topic={selectedTopic}
-                            onClose={() => setShowFieldManager(false)}
+                            onClose={(updatedFields) => {
+                                setTopicFields(updatedFields);
+                                setShowFieldManager(false);
+                            }}
                         />
                     </div>
                 </div>

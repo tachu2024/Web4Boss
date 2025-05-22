@@ -92,24 +92,6 @@ export default function Home() {
                     Bạn đã đăng nhập thành công, hãy trải nghiệm tính năng lưu trữ và ghi nhớ của trang web nhé.
                 </p>
 
-                <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-                    <div className="flex items-center space-x-4">
-                        <img
-                            src={userInfo?.avatar || '/default-avatar.png'}
-                            alt="Avatar"
-                            className="w-16 h-16 rounded-full"
-                        />
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">
-                                Xin chào, {userInfo?.username || 'User'}!
-                            </h1>
-                            <p className="text-gray-600">
-                                Chào mừng bạn đến với Web4Boss
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4 text-gray-900">Chủ đề của bạn</h2>
                     {topics && topics.length === 0 ? (

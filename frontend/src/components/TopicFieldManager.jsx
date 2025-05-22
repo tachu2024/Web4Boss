@@ -54,7 +54,7 @@ export default function TopicFieldManager({ topic, onClose }) {
                 description: '',
                 order: fields.length
             });
-            fetchFields();
+            await fetchFields();
         } catch (error) {
             setError('Không thể tạo trường mới');
         }
@@ -64,10 +64,16 @@ export default function TopicFieldManager({ topic, onClose }) {
         if (window.confirm('Bạn có chắc chắn muốn xóa trường này?')) {
             try {
                 await api.delete(`/api/topic-fields/${fieldId}`);
-                fetchFields();
+                await fetchFields();
             } catch (error) {
                 setError('Không thể xóa trường');
             }
+        }
+    };
+
+    const handleClose = () => {
+        if (onClose) {
+            onClose(fields);
         }
     };
 
@@ -75,7 +81,7 @@ export default function TopicFieldManager({ topic, onClose }) {
         <div className="p-4">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">Quản lý trường cho chủ đề: {topic?.name}</h3>
-                <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                <button onClick={handleClose} className="text-gray-500 hover:text-gray-700">
                     Đóng
                 </button>
             </div>
