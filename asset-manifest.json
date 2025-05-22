@@ -1,0 +1,19 @@
+{
+  "files": {
+    "main.css": "/Web4Boss/static/css/main.4050f4b4.css",
+    "main.js": "/Web4Boss/static/js/main.d49fd23b.js",
+    "static/js/453.e0837bad.chunk.js": "/Web4Boss/static/js/453.e0837bad.chunk.js",
+    "static/media/love.jpg": "/Web4Boss/static/media/love.3a193a35424a77435269.jpg",
+    "static/media/for4.jpg": "/Web4Boss/static/media/for4.c4a181df043c4fa5ef6c.jpg",
+    "static/media/denthuong.jpg": "/Web4Boss/static/media/denthuong.b15fc4e91eeb5d405c8b.jpg",
+    "static/media/gym.jpg": "/Web4Boss/static/media/gym.fcaa7f9d09bbae8c5e29.jpg",
+    "index.html": "/Web4Boss/index.html",
+    "main.4050f4b4.css.map": "/Web4Boss/static/css/main.4050f4b4.css.map",
+    "main.d49fd23b.js.map": "/Web4Boss/static/js/main.d49fd23b.js.map",
+    "453.e0837bad.chunk.js.map": "/Web4Boss/static/js/453.e0837bad.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.4050f4b4.css",
+    "static/js/main.d49fd23b.js"
+  ]
+}
