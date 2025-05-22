@@ -1,12 +1,12 @@
 # Build stage
-FROM maven:3.9.6-eclipse-temurin-18 AS build
+FROM maven:3.8.6-jdk-18 AS build
 WORKDIR /backend
 COPY pom.xml .
 COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Run stage
-FROM eclipse-temurin:18-jre-alpine
+FROM openjdk:18-jre-slim
 WORKDIR /backend
 COPY --from=build /backend/target/*.jar app.jar
 
