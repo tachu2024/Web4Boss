@@ -1,5 +1,5 @@
 # Build stage
-FROM maven:3.8.6-jdk-18 AS build
+FROM maven:3.8.6-eclipse-temurin AS build
 WORKDIR /backend
 COPY pom.xml .
 COPY src ./src
